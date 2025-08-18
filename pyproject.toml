@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "grid_nav"
+version = "0.0.0"
+requires-python = ">=3.8"
+dependencies = [
+]
+
+[project.scripts]
+grid-nav = "py_project_template.main:main"
