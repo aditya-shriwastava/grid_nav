@@ -10,4 +10,7 @@ dependencies = [
 ]
 
 [project.scripts]
-grid-nav = "py_project_template.main:main"
+grid-nav = "grid_nav.main:main"
+
+[tool.setuptools]
+packages = ["grid_nav"]
