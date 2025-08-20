@@ -3,14 +3,15 @@
 import argparse
 import os
 import sys
+
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
+
 import pygame
 import numpy as np
 import random
 import json
 import datetime
 from grid_nav.agents.human import HumanAgent
-
-os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 
 
 class GridNavGame:
