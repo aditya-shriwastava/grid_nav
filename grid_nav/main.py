@@ -11,11 +11,13 @@ import numpy as np
 import random
 import json
 import datetime
+import time
 from grid_nav.agents.human import HumanAgent
+from grid_nav.agents.a_star import AStarAgent
 
 
 class GridNavGame:
-    def __init__(self, world_file, agent, world_name, agent_name, headless=False, record=False):
+    def __init__(self, world_file, agent, world_name, agent_name, headless=False, record=False, delay_action=False):
         self.cell_size = 40
         self.grid_size = 16
         self.status_height = 50
@@ -36,6 +38,7 @@ class GridNavGame:
         self.agent_name = agent_name
         self.headless = headless
         self.record = record
+        self.delay_action = delay_action
         
         self.agent_pos = None
         self.target_pos = None
@@ -123,6 +126,9 @@ class GridNavGame:
         
         self.agent_pos = (new_row, new_col)
         self.move_count += 1
+        
+        if self.delay_action:
+            time.sleep(0.2)  # 200ms delay
         
         if self.agent_pos == self.target_pos:
             self.success = True
@@ -252,6 +258,8 @@ class GridNavGame:
 def create_agent(agent_type):
     if agent_type == 'human':
         return HumanAgent()
+    elif agent_type == 'A*':
+        return AStarAgent()
     else:
         print(f"Agent type '{agent_type}' not implemented yet")
         return None
@@ -293,7 +301,6 @@ def run_multiple_attempts(args, agent, world_directory, grid_files=None, specifi
         if grid_files:
             selected_file = random.choice(grid_files)
             grid_name = selected_file[:-4]
-            print(f"Randomly selected grid: {grid_name}")
         else:
             grid_name = specific_grid
         
@@ -301,7 +308,7 @@ def run_multiple_attempts(args, agent, world_directory, grid_files=None, specifi
         world_display_name = f"{world_directory}/{grid_name}"
         
         game = GridNavGame(world_file, agent, world_display_name, args.agent, 
-                          headless=args.headless, record=args.record)
+                          headless=args.headless, record=args.record, delay_action=args.delay_action)
         game.run()
         
         if game.success:
@@ -331,6 +338,8 @@ def main():
                         help='Record game data to JSON file')
     parser.add_argument('--attempts', type=int, default=1,
                         help='Number of game attempts (default: 1)')
+    parser.add_argument('--delay-action', action='store_true',
+                        help='Add 200ms delay after each action')
     
     args = parser.parse_args()
     
