@@ -1,6 +1,7 @@
 #autoux
 .venv
 data
+wb
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
