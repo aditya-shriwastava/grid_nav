@@ -3,8 +3,12 @@
 import argparse
 import os
 import sys
+import warnings
 
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
+
+# Suppress pkg_resources deprecation warning from pygame
+warnings.filterwarnings("ignore", message="pkg_resources is deprecated", category=UserWarning)
 
 import pygame
 import numpy as np
@@ -14,6 +18,7 @@ import datetime
 import time
 from grid_nav.agents.human import HumanAgent
 from grid_nav.agents.a_star import AStarAgent
+from grid_nav.agents.bc_agent import BCAgent
 
 
 class GridNavGame:
@@ -255,11 +260,16 @@ class GridNavGame:
             pygame.quit()
 
 
-def create_agent(agent_type):
+def create_agent(agent_type, model_path=None):
     if agent_type == 'human':
         return HumanAgent()
     elif agent_type == 'A*':
         return AStarAgent()
+    elif agent_type == 'bc':
+        if model_path is None:
+            print("Error: BC agent requires --model-path argument")
+            return None
+        return BCAgent(model_path)
     else:
         print(f"Agent type '{agent_type}' not implemented yet")
         return None
@@ -330,9 +340,11 @@ def main():
     parser.add_argument('--world', nargs='+', default=['train'], 
                         metavar=('DIRECTORY', '[GRID]'), 
                         help='World directory and optional grid name')
-    parser.add_argument('--agent', choices=['human', 'A*'], default='human', 
+    parser.add_argument('--agent', choices=['human', 'A*', 'bc'], default='human',
                         help='Agent type to use (default: human)')
-    parser.add_argument('--headless', action='store_true', 
+    parser.add_argument('--model-path', type=str, default=None,
+                        help='Path to trained model file (required for bc agent)')
+    parser.add_argument('--headless', action='store_true',
                         help='Run without pygame display')
     parser.add_argument('--record', action='store_true',
                         help='Record game data to JSON file')
@@ -343,7 +355,7 @@ def main():
     
     args = parser.parse_args()
     
-    agent = create_agent(args.agent)
+    agent = create_agent(args.agent, args.model_path)
     if not agent:
         return
     

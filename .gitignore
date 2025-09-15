@@ -1,6 +1,7 @@
 #autoux
 .venv
 data
+runs
 wb
 
 # Byte-compiled / optimized / DLL files

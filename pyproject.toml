@@ -8,11 +8,16 @@ version = "0.0.0"
 requires-python = ">=3.8"
 dependencies = [
     "numpy",
-    "pygame"
+    "pygame",
+    "torch>=2.0.0",
+    "torchvision>=0.15.0",
+    "toml",
+    "tqdm"
 ]
 
 [project.scripts]
 grid-nav = "grid_nav.main:main"
+behaviour_cloning_train= "grid_nav.behaviour_cloning.train:main"
 
 [tool.setuptools]
 packages = ["grid_nav"]
