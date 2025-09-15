@@ -67,7 +67,7 @@ class GridNavCNN(nn.Module):
 
         loss = None
         if action is not None:
-            a = torch.tensor([self.action_map[ai] for ai in action], dtype=torch.long)
+            a = torch.tensor([self.action_map[ai] for ai in action], dtype=torch.long, device=logits.device)
             loss = F.cross_entropy(logits, a)
         
         return logits, loss
