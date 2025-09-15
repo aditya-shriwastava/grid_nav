@@ -82,11 +82,12 @@ class GridNavCNN(nn.Module):
 
     # One Hot Encoding
     def encode_state(self, state):
-        # Create encoded tensor directly in PyTorch
+        # Create encoded tensor directly in PyTorch on the same device as input
         batch_size = state.shape[0]
         encoded_state = torch.zeros(
             (batch_size, 4, 16, 16),
-            dtype=torch.float32
+            dtype=torch.float32,
+            device=state.device
         )
 
         encoded_state[:,0,:,:] = (state == 0).float()
