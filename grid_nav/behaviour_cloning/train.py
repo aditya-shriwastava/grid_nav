@@ -18,7 +18,6 @@ from grid_nav.behaviour_cloning.model import GridNavCNN
 
 
 def evaluate_model(model, dataloader, device):
-    """Evaluate model on a dataset and return average loss."""
     model.eval()
     total_loss = 0
     num_batches = 0
@@ -36,7 +35,6 @@ def evaluate_model(model, dataloader, device):
 
 
 def save_metrics(metrics_file, epoch_metrics):
-    """Save training metrics to a JSON file."""
     if metrics_file.exists():
         with open(metrics_file, 'r') as f:
             all_metrics = json.load(f)

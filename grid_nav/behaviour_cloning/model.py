@@ -25,7 +25,7 @@ class GridNavCNN(nn.Module):
         
         # Fully connected layers
         self.fc1 = nn.Linear(128*4*4, 256)
-        self.dropout = nn.Dropout(0.3)
+        self.dropout = nn.Dropout(0.1)
         self.fc2 = nn.Linear(256, 4)
         
     def forward(self, state, action=None):
