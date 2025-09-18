@@ -32,7 +32,12 @@ class BCAgent(Agent):
             state_tensor = torch.from_numpy(state_batch).to(self.device)
 
             logits, _ = self.model(state_tensor, action=None)
-            action_idx = torch.argmax(logits, dim=-1).item()
+
+            # Convert logits to probabilities
+            probs = torch.softmax(logits, dim=-1)
+
+            # Sample from the action distribution
+            action_idx = torch.multinomial(probs[0], 1).item()
             action = self.model.action_map_inv[action_idx]
 
             return action
