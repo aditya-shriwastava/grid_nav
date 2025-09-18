@@ -4,6 +4,7 @@ import argparse
 import os
 from pathlib import Path
 from datetime import datetime
+import json
 
 import toml
 import torch
@@ -14,6 +15,38 @@ from tqdm import tqdm
 
 from grid_nav.behaviour_cloning.dataset import GridNavDataset
 from grid_nav.behaviour_cloning.model import GridNavCNN
+
+
+def evaluate_model(model, dataloader, device):
+    """Evaluate model on a dataset and return average loss."""
+    model.eval()
+    total_loss = 0
+    num_batches = 0
+
+    with torch.no_grad():
+        for batch in dataloader:
+            states = batch[0].to(device)
+            actions = batch[1]
+
+            _, loss = model(states, actions)
+            total_loss += loss.item()
+            num_batches += 1
+
+    return total_loss / num_batches if num_batches > 0 else 0
+
+
+def save_metrics(metrics_file, epoch_metrics):
+    """Save training metrics to a JSON file."""
+    if metrics_file.exists():
+        with open(metrics_file, 'r') as f:
+            all_metrics = json.load(f)
+    else:
+        all_metrics = []
+
+    all_metrics.append(epoch_metrics)
+
+    with open(metrics_file, 'w') as f:
+        json.dump(all_metrics, f, indent=2)
 
 
 def main():
@@ -37,9 +70,9 @@ def main():
 
 
     # Get hyperparameters from config or use defaults
-    batch_size = config.get('batch_size', 32)
-    learning_rate = config.get('learning_rate', 0.001)
-    num_epochs = config.get('num_epochs', 100)
+    batch_size = config.get('batch_size')
+    learning_rate = config.get('learning_rate')
+    num_epochs = config.get('num_epochs')
 
     # Create timestamp directory for this run
     config_dir = Path(args.config).parent
@@ -49,15 +82,28 @@ def main():
 
     print(f"Created run directory: {run_dir}")
 
+    # Load training dataset
     training_dataset = GridNavDataset(
         config.get('training_dataset')
     )
-    print(f"Loaded {len(training_dataset)} state-action pairs")
+    print(f"Loaded {len(training_dataset)} training state-action pairs")
 
     train_dataloader = DataLoader(
         training_dataset,
         batch_size=batch_size,
         shuffle=True
+    )
+
+    # Load test dataset
+    test_dataset = GridNavDataset(
+        config.get('test_dataset')
+    )
+    print(f"Loaded {len(test_dataset)} test state-action pairs")
+
+    test_dataloader = DataLoader(
+        test_dataset,
+        batch_size=batch_size,
+        shuffle=False
     )
 
     # Initialize model
@@ -75,8 +121,16 @@ def main():
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     print(f"Training for {num_epochs} epochs with batch size {batch_size}")
 
-    # Track best loss for saving best model
-    best_loss = float('inf')
+    # Track best test loss for saving best model
+    best_test_loss = float('inf')
+
+    # Metrics file for saving training history
+    metrics_file = run_dir / "metrics.json"
+
+    # Lists to store metrics for plotting
+    train_losses = []
+    test_losses = []
+    epochs_list = []
 
     # Training loop
     print("\nStarting training...")
@@ -119,11 +173,30 @@ def main():
             # Update batch progress bar
             batch_pbar.set_postfix({'loss': loss.item()})
 
-        # Calculate epoch average loss
-        avg_loss = total_loss / num_batches if num_batches > 0 else 0
+        # Calculate training average loss
+        avg_train_loss = total_loss / num_batches if num_batches > 0 else 0
+
+        # Evaluate on test dataset
+        avg_test_loss = evaluate_model(model, test_dataloader, device)
+
+        # Store metrics
+        epochs_list.append(epoch + 1)
+        train_losses.append(avg_train_loss)
+        test_losses.append(avg_test_loss)
+
+        # Save metrics to file
+        epoch_metrics = {
+            'epoch': epoch + 1,
+            'train_loss': avg_train_loss,
+            'test_loss': avg_test_loss
+        }
+        save_metrics(metrics_file, epoch_metrics)
 
         # Update epoch progress bar
-        epoch_pbar.set_postfix({'avg_loss': f'{avg_loss:.4f}'})
+        epoch_pbar.set_postfix({
+            'train_loss': f'{avg_train_loss:.4f}',
+            'test_loss': f'{avg_test_loss:.4f}'
+        })
 
         # Save checkpoint for this epoch
         checkpoint_path = run_dir / f"epoch_{epoch+1}.pt"
@@ -131,12 +204,13 @@ def main():
             'epoch': epoch + 1,
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
-            'loss': avg_loss,
+            'train_loss': avg_train_loss,
+            'test_loss': avg_test_loss,
         }, checkpoint_path)
 
-        # Update best model if this epoch has lower loss
-        if avg_loss < best_loss:
-            best_loss = avg_loss
+        # Update best model if this epoch has lower test loss
+        if avg_test_loss < best_test_loss:
+            best_test_loss = avg_test_loss
 
             # Update best.pt symlink in run directory
             best_symlink = run_dir / "best.pt"
@@ -153,12 +227,18 @@ def main():
             latest_best_symlink.symlink_to(relative_path)
 
             # Update progress bar to show new best
-            epoch_pbar.set_postfix({'avg_loss': f'{avg_loss:.4f}', 'best': '✓'})
+            epoch_pbar.set_postfix({
+                'train_loss': f'{avg_train_loss:.4f}',
+                'test_loss': f'{avg_test_loss:.4f}',
+                'best': '✓'
+            })
 
     print("\nTraining completed!")
-    print(f"Best loss: {best_loss:.4f}")
+    print(f"Best test loss: {best_test_loss:.4f}")
+    print(f"Final train loss: {train_losses[-1]:.4f}")
     print(f"Models saved in: {run_dir}")
     print(f"Best model symlink: {config_dir}/latest_best.pt")
+    print(f"Metrics saved to: {metrics_file}")
 
 
 if __name__ == '__main__':

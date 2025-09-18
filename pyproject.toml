@@ -12,12 +12,13 @@ dependencies = [
     "torch>=2.0.0",
     "torchvision>=0.15.0",
     "toml",
-    "tqdm"
+    "tqdm",
+    "streamlit"
 ]
 
 [project.scripts]
 grid-nav = "grid_nav.main:main"
-behaviour_cloning_train= "grid_nav.behaviour_cloning.train:main"
+behaviour_cloning_train = "grid_nav.behaviour_cloning.train:main"
 
 [tool.setuptools]
 packages = ["grid_nav"]
