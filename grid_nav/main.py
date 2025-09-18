@@ -26,6 +26,7 @@ class GridNavGame:
         self.cell_size = 40
         self.grid_size = 16
         self.status_height = 50
+        self.max_steps = 16 * 16  # Maximum number of steps before failure
         self.window_width = self.cell_size * self.grid_size
         self.window_height = self.window_width + self.status_height
         
@@ -131,10 +132,15 @@ class GridNavGame:
         
         self.agent_pos = (new_row, new_col)
         self.move_count += 1
-        
+
+        # Check if maximum steps exceeded
+        if self.move_count >= self.max_steps:
+            self._end_game(f"GAME OVER: Maximum steps ({self.max_steps}) exceeded!")
+            return
+
         if self.delay_action:
             time.sleep(0.2)  # 200ms delay
-        
+
         if self.agent_pos == self.target_pos:
             self.success = True
             self._end_game("SUCCESS: Reached target!")
@@ -243,21 +249,30 @@ class GridNavGame:
                     self.move_agent(cmd)
         else:
             while running:
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        running = False
+                        break
+
+                if not running:
+                    break
+
                 self.draw()
-                
+
                 if self.game_over and self.game_over_time:
                     if pygame.time.get_ticks() - self.game_over_time >= 1000:
                         running = False
                         continue
-                
+
                 if not self.game_over:
                     cmd = self.agent.get_cmd(self.get_state())
                     if cmd is None:
                         running = False
                     else:
                         self.move_agent(cmd)
-            
-            pygame.quit()
+
+            pygame.event.clear()
+            # Don't quit pygame here - let it be handled by the caller for multiple attempts
 
 
 def create_agent(agent_type, model_path=None):
@@ -333,6 +348,10 @@ def run_multiple_attempts(args, agent, world_directory, grid_files=None, specifi
     print(f"Successes: {successes}")
     print(f"Failures: {failures}")
     print(f"Success rate: {successes}/{args.attempts} ({100 * successes / args.attempts:.1f}%)")
+
+    # Clean up pygame after all attempts are done
+    if not args.headless:
+        pygame.quit()
 
 
 def main():
