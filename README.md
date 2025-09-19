@@ -26,9 +26,11 @@ grid-nav
 ```
 
 ## Behaviour Cloning Results
-Number of Trajectory (Train) | Success Percentage (Train) | Success Percentage (Test)
-     0.1k                    |          10.1%             |     7.0%                 
-     1k                      |          87.3%             |     42.9%                
-     10k                     |          99.8%             |     40.5%                
-     50k                     |          99.6%             |     43.9%                
-     100k                    |          99.3%             |     42.2%                
+
+| Number of Trajectories (Train) | Success Percentage (Train) | Success Percentage (Test) |
+|:------------------------------:|:--------------------------:|:-------------------------:|
+| 0.1k                           | 10.1%                      | 7.0%                      |
+| 1k                             | 87.3%                      | 42.9%                     |
+| 10k                            | 99.8%                      | 40.5%                     |
+| 50k                            | 99.6%                      | 43.9%                     |
+| 100k                           | 99.3%                      | 42.2%                     |                
