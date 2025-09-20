@@ -34,3 +34,5 @@ grid-nav
 | 10k                            | 99.8%                      | 40.5%                     |
 | 50k                            | 99.6%                      | 43.9%                     |
 | 100k                           | 99.3%                      | 42.2%                     |                
+
+**Major issue: Agent oscillate between two states and get in loop it can never escape!**
