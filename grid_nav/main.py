@@ -20,32 +20,39 @@ from grid_nav.agents.human import HumanAgent
 from grid_nav.agents.a_star import AStarAgent
 from grid_nav.agents.bc_agent import BCAgent
 
+# Global flag to track if pygame was initialized
+PYGAME_INITIALIZED = False
+
 
 class GridNavGame:
-    def __init__(self, world_file, agent, world_name, agent_name, headless=False, record=False, delay_action=False):
+    def __init__(self, world_file, agent, world_name, agent_name, headless=False, record=False, delay_action=False, agent_pose=None, target_pose=None):
         self.cell_size = 40
         self.grid_size = 16
         self.status_height = 50
         self.max_steps = 16 * 16  # Maximum number of steps before failure
         self.window_width = self.cell_size * self.grid_size
         self.window_height = self.window_width + self.status_height
-        
+
         self.BLACK = (0, 0, 0)
         self.WHITE = (255, 255, 255)
         self.GRAY = (128, 128, 128)
         self.RED = (255, 0, 0)
         self.GREEN = (0, 255, 0)
         self.BLUE = (0, 0, 255)
-        
+
         self.world = self._load_world(world_file)
-        
+
         self.agent = agent
         self.world_name = world_name
         self.agent_name = agent_name
         self.headless = headless
         self.record = record
         self.delay_action = delay_action
-        
+        self.pygame_initialized = False  # Track if pygame was initialized
+
+        self.agent_pose_arg = agent_pose
+        self.target_pose_arg = target_pose
+
         self.agent_pos = None
         self.target_pos = None
         self.initial_agent_pos = None
@@ -71,8 +78,11 @@ class GridNavGame:
         return world
     
     def _init_pygame(self):
+        global PYGAME_INITIALIZED
         if not self.headless:
             pygame.init()
+            PYGAME_INITIALIZED = True
+            self.pygame_initialized = True
             self.screen = pygame.display.set_mode((self.window_width, self.window_height))
             pygame.display.set_caption("Grid Navigation")
             self.clock = pygame.time.Clock()
@@ -80,16 +90,36 @@ class GridNavGame:
             self.status_font = pygame.font.Font(None, 28)
     
     def _place_agent_and_target(self):
-        free_spaces = [(i, j) for i in range(self.grid_size) 
+        free_spaces = [(i, j) for i in range(self.grid_size)
                        for j in range(self.grid_size) if self.world[i, j] == 0]
-        
-        if len(free_spaces) < 2:
-            raise ValueError("Not enough free spaces for agent and target")
-        
-        positions = random.sample(free_spaces, 2)
-        self.agent_pos = positions[0]
-        self.initial_agent_pos = positions[0]
-        self.target_pos = positions[1]
+
+        # Use provided positions if available, otherwise sample randomly
+        if self.agent_pose_arg is not None:
+            self.agent_pos = tuple(self.agent_pose_arg)
+            # Validate agent position
+            if self.agent_pos not in free_spaces:
+                raise ValueError(f"Agent position {self.agent_pos} is not a valid free space")
+        else:
+            # Sample random position for agent
+            if len(free_spaces) < 1:
+                raise ValueError("Not enough free spaces for agent")
+            self.agent_pos = random.choice(free_spaces)
+
+        self.initial_agent_pos = self.agent_pos
+
+        if self.target_pose_arg is not None:
+            self.target_pos = tuple(self.target_pose_arg)
+            # Validate target position
+            if self.target_pos not in free_spaces:
+                raise ValueError(f"Target position {self.target_pos} is not a valid free space")
+            if self.target_pos == self.agent_pos:
+                raise ValueError("Agent and target positions cannot be the same")
+        else:
+            # Sample random position for target (different from agent)
+            available_spaces = [pos for pos in free_spaces if pos != self.agent_pos]
+            if len(available_spaces) < 1:
+                raise ValueError("Not enough free spaces for target")
+            self.target_pos = random.choice(available_spaces)
     
     def _print_game_info(self):
         print(f"World: {self.world_name}")
@@ -332,8 +362,9 @@ def run_multiple_attempts(args, agent, world_directory, grid_files=None, specifi
         world_file = f'worlds/{world_directory}/{grid_name}.txt'
         world_display_name = f"{world_directory}/{grid_name}"
         
-        game = GridNavGame(world_file, agent, world_display_name, args.agent, 
-                          headless=args.headless, record=args.record, delay_action=args.delay_action)
+        game = GridNavGame(world_file, agent, world_display_name, args.agent,
+                          headless=args.headless, record=args.record, delay_action=args.delay_action,
+                          agent_pose=args.agent_pose, target_pose=args.target_pose)
         game.run()
         
         if game.success:
@@ -349,9 +380,14 @@ def run_multiple_attempts(args, agent, world_directory, grid_files=None, specifi
     print(f"Failures: {failures}")
     print(f"Success rate: {successes}/{args.attempts} ({100 * successes / args.attempts:.1f}%)")
 
-    # Clean up pygame after all attempts are done
-    if not args.headless:
-        pygame.quit()
+    # Clean up pygame after all attempts are done - only if it was actually initialized
+    global PYGAME_INITIALIZED
+    if PYGAME_INITIALIZED:
+        try:
+            pygame.quit()
+            PYGAME_INITIALIZED = False
+        except:
+            pass  # Ignore any errors during pygame cleanup
 
 
 def main():
@@ -371,7 +407,11 @@ def main():
                         help='Number of game attempts (default: 1)')
     parser.add_argument('--delay-action', action='store_true',
                         help='Add 200ms delay after each action')
-    
+    parser.add_argument('--agent-pose', type=int, nargs=2, metavar=('ROW', 'COL'),
+                        help='Specify agent starting position (row col)')
+    parser.add_argument('--target-pose', type=int, nargs=2, metavar=('ROW', 'COL'),
+                        help='Specify target position (row col)')
+
     args = parser.parse_args()
     
     agent = create_agent(args.agent, args.model_path)
@@ -397,4 +437,8 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    finally:
+        # Force exit to ensure program terminates cleanly
+        os._exit(0)
